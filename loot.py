@@ -63,10 +63,13 @@ def split(party, num_coins, coin_type):
     while num_coins > 0:
         # if everybody is equal, split as many coins as possible
         if num_coins >= num_party and party_equal(party):
+            pre_split_coins = num_coins
             split_coins, num_coins = divmod(num_coins, num_party)
-            click.echo("split {} {} with {} leftover...".format(
-                split_coins,
+            click.echo("split {} {} into {} piles of {} with {} leftover...".format(
+                pre_split_coins,
                 coin_type,
+                num_party,
+                split_coins,
                 num_coins,
             ))
             for p in party:
