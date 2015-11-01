@@ -1,46 +1,44 @@
 #!/usr/bin/env python
 
 import operator
-import pprint
+import re
+import yaml
 
 import click
 
 
-platinum2copper = 1000
-gold2copper = 100
-electrum2copper = 50
-silver2copper = 10
-
-
 class Valuable(object):
 
-    def __init__(self, name, short, value_in_cp):
+    def __init__(self, name, short, value, game_data):
+        self.game_data = game_data
         self.name = str(name)
-        self.short = str(short)
-        self.value_in_cp = int(value_in_cp)
+        self.short = str(short) if short else None
+        self.value = int(value)
 
     def __repr__(self):
-        return "Valuable(name='{}', value_in_cp='{}')".format(
+        return "Valuable(name='{}', value='{} {}')".format(
             self.name,
-            self.value_in_cp,
+            self.value,
+            self.game_data['base_unit'],
         )
 
     def __str__(self):
         return "{}".format(
-            self.name,
-            # self.value_in_cp,
+            self.short or self.name,
+            # self.value,
         )
 
     def __cmp__(self, other):
-        return cmp(self.value_in_cp, other.value_in_cp)
+        return cmp(self.value, other.value)
 
     def __hash__(self):
-        return hash((self.name, self.value_in_cp))
+        return hash((self.name, self.value))
 
 
 class Character(object):
 
-    def __init__(self, name):
+    def __init__(self, name, game_data):
+        self.game_data = game_data
         self.name = name
         self.valuables = {}
 
@@ -50,29 +48,42 @@ class Character(object):
         self.valuables[valuable] += num
 
     @property
-    def total_value_in_copper(self):
+    def total_value(self):
         total = 0
 
         for valuable, num in self.valuables.iteritems():
-            total += valuable.value_in_cp * num
+            total += valuable.value * num
 
         return total
 
     def __repr__(self):
-        return "Character(name='{}', total_value_in_copper='{}')".format(
+        return "Character(name='{}', total_value='{}')".format(
             self.name,
-            self.total_value_in_copper,
+            self.total_value,
         )
 
     def __str__(self):
-        return "Character {} gets {} gp in valuables:\n{}".format(
+        # todo: figure out how to get X
+        return "Character {} gets {} {} worth of valuables:\n{}".format(
             self.name,
-            self.total_value_in_copper / gold2copper,
-            pprint.pformat(self.valuables),
+            self.total_value,
+            self.game_data['base_unit'],
+            "\n".join([
+                "- {} {}".format(n, v)
+                for v, n in sort_dict_descending_keys(self.valuables)
+            ]),
         )
 
     def __cmp__(self, other):
-        return cmp(self.total_value_in_copper, other.total_value_in_copper)
+        return cmp(self.total_value, other.total_value)
+
+
+def sort_dict_descending_keys(data):
+    return sorted(
+        data.items(),
+        key=operator.itemgetter(0),
+        reverse=True
+    )
 
 
 def split(party, valuable, num_valuables):
@@ -112,52 +123,77 @@ def party_equal(party):
     if len(party) <= 1:
         return True
 
-    p0_value = party[0].total_value_in_copper
+    p0_value = party[0].total_value
 
     for p in party[1:]:
-        if p.total_value_in_copper != p0_value:
+        if p.total_value != p0_value:
             return False
 
     return True
 
 
 @click.command()
-@click.option('--cp', '--copper', prompt=True, type=int)
-@click.option('--sp', '--silver', prompt=True, type=int)
-@click.option('--ep', '--electrum', prompt=True, type=int)
-@click.option('--gp', '--gold', prompt=True, type=int)
-@click.option('--pp', '--platinum', prompt=True, type=int)
+@click.argument('valuables', nargs=-1, type=click.UNPROCESSED)
+@click.option(
+    '-g', '--game-data',
+    default='games/dnd.yaml',
+    type=click.File(),
+)
 @click.option('-n', '--num-party', prompt=True, type=int)
 def main(
-    copper,
-    electrum,
-    gold,
+    game_data,
     num_party,
-    platinum,
-    silver,
+    valuables,
 ):
-    valuables = {}
+    game_data = yaml.load(game_data)
+
+    possible_valuables = []
+    for v_name, v_data in game_data['valuables'].iteritems():
+        v = Valuable(
+            game_data=game_data,
+            name=v_name,
+            short=v_data.get('short', None),
+            value=v_data['value'],
+        )
+        possible_valuables.append(v)
+
+    # parse valuables
+    parsed_valuables = {}
+    r = re.compile('(\d+) *(\D+)')
+    for v in valuables:
+        m = r.match(v)
+        if not m:
+            click.echo("Unable to parse: %s", v)
+            continue
+
+        num, name_or_short = m.groups()
+
+        if not num:
+            click.echo("No num: %s", v)
+            continue
+
+        num = int(num)
+
+        if not name_or_short:
+            click.echo("No name_or_short: %s", v)
+            continue
+
+        # todo: this could be faster
+        for pv in possible_valuables:
+            if name_or_short not in (pv.name, pv.short):
+                continue
+
+            if pv not in parsed_valuables:
+                parsed_valuables[pv] = 0
+
+            parsed_valuables[pv] += num
 
     party = []
     for x in xrange(num_party):
-        party.append(Character(x))
+        party.append(Character(name=x, game_data=game_data))
 
-    if platinum:
-        valuables[Valuable('platinum', 'pp', 1000)] = platinum
-    if gold:
-        valuables[Valuable('gold', 'gp', 100)] = gold
-    if electrum:
-        valuables[Valuable('electrum', 'ep', 50)] = electrum
-    if silver:
-        valuables[Valuable('silver', 'sp', 10)] = silver
-    if copper:
-        valuables[Valuable('copper', 'cp', 1)] = copper
-
-    for valuable, num in sorted(
-        valuables.items(),
-        key=operator.itemgetter(0),  # sort by key which sorts by the value in copper
-        reverse=True
-    ):
+    # split up the most expensive things first
+    for valuable, num in sort_dict_descending_keys(parsed_valuables):
         split(party, valuable, num)
 
     click.echo("")

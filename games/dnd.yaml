@@ -1,0 +1,20 @@
+---
+base_unit: cp
+valuables:
+    copper:
+        short: cp
+        value: 1
+    silver:
+        short: sp
+        value: 10
+    electrum:
+        short: ep
+        value: 50
+    gold:
+        short: gp
+        value: 100
+    platinum:
+        short: pp
+        value: 1000
+    chicken:
+        value: 10
