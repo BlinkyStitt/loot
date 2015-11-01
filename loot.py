@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import operator
 import pprint
 
 import click
@@ -11,89 +12,110 @@ electrum2copper = 50
 silver2copper = 10
 
 
-class Character(object):
+class Valuable(object):
 
-    def __init__(self, name, cp=0, ep=0, sp=0, gp=0, pp=0):
-        self.name = name
-        self.cp = cp
-        self.ep = ep
-        self.sp = sp
-        self.gp = gp
-        self.pp = pp
-
-    def add_coin(self, coin_type, num):
-        current_coins = getattr(self, coin_type)
-        setattr(self, coin_type, current_coins + num)
-
-    @property
-    def total_copper(self):
-        return (
-            self.pp * platinum2copper +
-            self.gp * gold2copper +
-            self.sp * silver2copper +
-            self.ep * electrum2copper +
-            self.cp
-        )
+    def __init__(self, name, short, value_in_cp):
+        self.name = str(name)
+        self.short = str(short)
+        self.value_in_cp = int(value_in_cp)
 
     def __repr__(self):
-        return "Character(name='{}', total_copper='{}')".format(
+        return "Valuable(name='{}', value_in_cp='{}')".format(
             self.name,
-            self.total_copper,
+            self.value_in_cp,
         )
 
     def __str__(self):
-        return "Character {}: {}".format(
+        return "{}".format(
             self.name,
-            pprint.pformat({
-                'pp': self.pp,
-                'gp': self.gp,
-                'sp': self.sp,
-                'ep': self.ep,
-                'cp': self.cp,
-            }),
+            # self.value_in_cp,
         )
 
     def __cmp__(self, other):
-        return cmp(self.total_copper, other.total_copper)
+        return cmp(self.value_in_cp, other.value_in_cp)
+
+    def __hash__(self):
+        return hash((self.name, self.value_in_cp))
 
 
-def split(party, num_coins, coin_type):
+class Character(object):
+
+    def __init__(self, name):
+        self.name = name
+        self.valuables = {}
+
+    def add_valuable(self, valuable, num):
+        if valuable not in self.valuables:
+            self.valuables[valuable] = 0
+        self.valuables[valuable] += num
+
+    @property
+    def total_value_in_copper(self):
+        total = 0
+
+        for valuable, num in self.valuables.iteritems():
+            total += valuable.value_in_cp * num
+
+        return total
+
+    def __repr__(self):
+        return "Character(name='{}', total_value_in_copper='{}')".format(
+            self.name,
+            self.total_value_in_copper,
+        )
+
+    def __str__(self):
+        return "Character {} gets {} gp in valuables:\n{}".format(
+            self.name,
+            self.total_value_in_copper / gold2copper,
+            pprint.pformat(self.valuables),
+        )
+
+    def __cmp__(self, other):
+        return cmp(self.total_value_in_copper, other.total_value_in_copper)
+
+
+def split(party, valuable, num_valuables):
     num_party = len(party)
 
-    while num_coins > 0:
+    while num_valuables > 0:
         # if everybody is equal, split as many coins as possible
-        if num_coins >= num_party and party_equal(party):
-            pre_split_coins = num_coins
-            split_coins, num_coins = divmod(num_coins, num_party)
-            click.echo("split {} {} into {} piles of {} with {} leftover...".format(
-                pre_split_coins,
-                coin_type,
-                num_party,
-                split_coins,
-                num_coins,
-            ))
+        if num_valuables >= num_party and party_equal(party):
+            pre_split_valuables = num_valuables
+            split_valuables, num_valuables = divmod(num_valuables, num_party)
+            click.echo(
+                "split {} {} into {} piles of {} with {} leftover...".format(
+                    pre_split_valuables,
+                    valuable,
+                    num_party,
+                    split_valuables,
+                    num_valuables,
+                )
+            )
             for p in party:
-                p.add_coin(coin_type, split_coins)
+                p.add_valuable(valuable=valuable, num=split_valuables)
 
-        if num_coins:
-            click.echo("dividing {} {}...".format(num_coins, coin_type))
+        if num_valuables:
+            click.echo("giving 1 of {} {} to the poorest character...".format(
+                num_valuables,
+                valuable,
+            ))
 
-            # pick the party member with the least amount of total_copper
+            # pick the poorest party member
             p = min(party)
 
-            # setattr(p, coin_type, getattr(p, coin_type) + 1)
-            p.add_coin(coin_type, 1)
-            num_coins -= 1
+            p.add_valuable(valuable=valuable, num=1)
+            num_valuables -= 1
 
 
 def party_equal(party):
     if len(party) <= 1:
         return True
 
-    p0_total_copper = party[0].total_copper
+    p0_value = party[0].total_value_in_copper
 
     for p in party[1:]:
-        if p.total_copper != p0_total_copper:
+        if p.total_value_in_copper != p0_value:
             return False
 
     return True
@@ -114,15 +136,29 @@ def main(
     platinum,
     silver,
 ):
+    valuables = {}
+
     party = []
     for x in xrange(num_party):
         party.append(Character(x))
 
-    split(party, platinum, 'pp')
-    split(party, gold, 'gp')
-    split(party, silver, 'sp')
-    split(party, electrum, 'ep')
-    split(party, copper, 'cp')
+    if platinum:
+        valuables[Valuable('platinum', 'pp', 1000)] = platinum
+    if gold:
+        valuables[Valuable('gold', 'gp', 100)] = gold
+    if electrum:
+        valuables[Valuable('electrum', 'ep', 50)] = electrum
+    if silver:
+        valuables[Valuable('silver', 'sp', 10)] = silver
+    if copper:
+        valuables[Valuable('copper', 'cp', 1)] = copper
+
+    for valuable, num in sorted(
+        valuables.items(),
+        key=operator.itemgetter(0),  # sort by key which sorts by the value in copper
+        reverse=True
+    ):
+        split(party, valuable, num)
 
     click.echo("")
     if party_equal(party):
