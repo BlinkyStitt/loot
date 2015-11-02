@@ -159,26 +159,27 @@ def main(
 
     # parse valuables
     parsed_valuables = {}
-    r = re.compile('(\d+) *(\D+)')
-    for v in valuables:
+    r = re.compile('^ *(\d+) *(.+) *$')
+    for v in valuables:  # collection of strings
         m = r.match(v)
         if not m:
-            click.echo("Unable to parse: %s", v)
+            click.confirm("Unable to parse '%s'. Skip it?" % v, abort=True)
             continue
 
         num, name_or_short = m.groups()
 
         if not num:
-            click.echo("No num: %s", v)
+            click.confirm("No num while parsing '%s'. Skip it?" % v, abort=True)
             continue
 
         num = int(num)
 
         if not name_or_short:
-            click.echo("No name_or_short: %s", v)
+            click.confirm("No name while parsing '%s'. Skip it?" % v, abort=True)
             continue
 
         # todo: this could be faster
+        found = False
         for pv in possible_valuables:
             if name_or_short not in (pv.name, pv.short):
                 continue
@@ -187,6 +188,12 @@ def main(
                 parsed_valuables[pv] = 0
 
             parsed_valuables[pv] += num
+            found = True
+            break
+
+        if not found:
+            click.confirm("Unable to find data for '%s'. Skip it?" % name_or_short, abort=True)
+            # todo: prompt the name/short/value and save it to yaml
 
     party = []
     for x in xrange(num_party):

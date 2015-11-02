@@ -4,12 +4,19 @@ Loot Splitter
 Setup
 -----
 
+To install all of the requirements in a virtualenv:
+
     $ . setup.source_me
+
+To enter the virtualenv:
+
+    $ . env/bin/activate
+
 
 Example
 -------
 
-    $ ./loot.py -n 4 90cp 700sp 2000gp 18pp 1chicken
+    $ ./loot.py -n 4 90cp 700sp 2000gp 18pp "1 chicken"
     split 18 pp into 4 piles of 4 with 2 leftover...
     giving 1 of 2 pp to the poorest character...
     giving 1 of 1 pp to the poorest character...
