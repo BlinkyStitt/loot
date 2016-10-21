@@ -51,7 +51,7 @@ class Character(object):
     def total_value(self):
         total = 0
 
-        for valuable, num in self.valuables.iteritems():
+        for valuable, num in self.valuables.items():
             total += valuable.value * num
 
         return total
@@ -63,7 +63,7 @@ class Character(object):
         )
 
     def __str__(self):
-        # todo: figure out how to get X
+        # TODO: figure out how to get X
         return "Character {} gets {} {} worth of valuables:\n{}".format(
             self.name,
             self.total_value,
@@ -148,7 +148,7 @@ def main(
     game_data = yaml.load(game_data)
 
     possible_valuables = []
-    for v_name, v_data in game_data['valuables'].iteritems():
+    for v_name, v_data in game_data['valuables'].items():
         v = Valuable(
             game_data=game_data,
             name=v_name,
@@ -156,6 +156,9 @@ def main(
             value=v_data['value'],
         )
         possible_valuables.append(v)
+
+    if not valuables:
+        raise NotImplementedError("Interactive mode is not yet supported. Please enter all the valuables as arguments to your command")
 
     # parse valuables
     parsed_valuables = {}
@@ -178,7 +181,7 @@ def main(
             click.confirm("No name while parsing '%s'. Skip it?" % v, abort=True)
             continue
 
-        # todo: this could be faster
+        # TODO: this could be faster
         found = False
         for pv in possible_valuables:
             if name_or_short not in (pv.name, pv.short):
@@ -193,10 +196,10 @@ def main(
 
         if not found:
             click.confirm("Unable to find data for '%s'. Skip it?" % name_or_short, abort=True)
-            # todo: prompt the name/short/value and save it to yaml
+            # TODO: prompt the name/short/value and save it to yaml
 
     party = []
-    for x in xrange(num_party):
+    for x in range(num_party):
         party.append(Character(name=x, game_data=game_data))
 
     # split up the most expensive things first
