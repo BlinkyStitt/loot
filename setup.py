@@ -16,7 +16,7 @@ setuptools.setup(
         'click',
         'PyYAML',
     ],  # keep this in sync with requirements.in
-    name='plex_schedule',
+    name='loot',
     packages=setuptools.find_packages(),
     version='0.0.1.dev0',
 )
