@@ -14,6 +14,5 @@ WORKDIR /src
 RUN pip install -r requirements.txt -e . \
  && loot --help
 
-# todo: this is acting weird. when i do run it wont see any args and just always prints the help text...
 ENTRYPOINT ["loot"]
 CMD ["--help"]
