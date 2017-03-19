@@ -1,15 +1,17 @@
 # Loot
 
-Easily divide treasure between a party as fairly as possible
+Easily divide treasure between a party as fairly as possible.
+
+An interactive mode will be written eventually. For now, as the game progresses, add what they find to the end of the command. Whenever the party decides to split the loot, press enter and the program will do its calcualtions.
 
 
 # Quick Setup with Docker
 
 1. Install Docker from https://www.docker.com/
 
-2. Run the following command in your terminal and answer its questions:
+2. Run the following command in your terminal:
 ```bash
-docker run --rm -it bwstitt/loot
+docker run --rm -it bwstitt/loot -n 4 90cp 700sp 2000gp 18pp "1 chicken"
 ```
 
 # Setup without Docker
